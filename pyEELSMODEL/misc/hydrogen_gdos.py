@@ -146,8 +146,50 @@ def gdos_l(E, qa0sq, Z):
 
     return df_dE
 
+def correction_factor_kohl(
+    alpha: float, beta: float, theta_sampling: np.array
+):
+    """geometric correction factor for convergent beam in STEM
+    Reference:
+    Kohl, H. "A simple procedure for evaluating effective scattering cross-sections in STEM." Ultramicroscopy 16.2 (1985): 265-268.
+    Args:
+        alpha (float): incident beam convergence angle in rad
+        beta (float): collection angle in rad
+        theta_sampling (np.array): scattering angle in rad
 
-def correction_factor_kohl(alpha, beta, theta, min_alpha=1e-6):
+    Returns:
+        np.array: correction factor for each scattering angle
+    """
+    theta_sampling[np.isnan(theta_sampling)] = 0
+    factor = np.zeros(theta_sampling.shape)
+    mask_1 = theta_sampling <= np.abs(alpha - beta)
+    mask_2 = np.logical_and(
+        theta_sampling > np.abs(alpha - beta), theta_sampling < alpha + beta
+    )
+    mask_3 = theta_sampling >= alpha + beta
+    x = (alpha**2 + beta**2 - theta_sampling[mask_2] ** 2) / (2 * alpha * beta)
+    y = (beta**2 + theta_sampling[mask_2] ** 2 - alpha**2) / (
+        2 * beta * theta_sampling[mask_2]
+    )
+    factor[mask_1] = min(alpha, beta) ** 2 / alpha**2
+    factor[mask_2] = (
+        1
+        / np.pi
+        * (
+            np.arccos(x)
+            + (beta**2 / alpha**2) * np.arccos(y)
+            - (1 / 2 / alpha**2)
+            * np.sqrt(
+                4 * alpha**2 * beta**2
+                - ((alpha**2 + beta**2 - theta_sampling[mask_2] ** 2) ** 2)
+            )
+        )
+    )
+    factor[mask_3] = 0
+    return factor
+
+
+def correction_factor_kohl_old(alpha, beta, theta, min_alpha=1e-6):
     """
     STILL NEEDS TO BE VALIDATED
     Calculates the correction factor when using a convergent
