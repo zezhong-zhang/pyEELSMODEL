@@ -3,7 +3,8 @@ from pyEELSMODEL.components.CLedge.coreloss_edge import CoreLossEdge
 import os
 import h5py
 from pyEELSMODEL import __file__
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 class ZezhongCoreLossEdge(CoreLossEdge):
     """
@@ -146,3 +147,39 @@ class ZezhongCoreLossEdge(CoreLossEdge):
             cross_section = pref * cs
 
         return cross_section
+    
+    @property
+    def E0(self):
+        return self.parameters[1].getvalue()
+
+    @property
+    def k0(self):
+        return 2*np.pi/hsdos.energy2wavelength(self.E0) 
+
+    def plot_gos(self):
+        plt.figure()
+        plt.pcolormesh( self.free_energies, self.gos)
+        plt.xlabel('q [1/A]')
+        plt.ylabel('Energy above ionization [eV]')
+        plt.colorbar()
+        plt.title('GOS for ' + self.element + ' ' + self.edge)
+        plt.show()
+
+    def plot_ddscs(self):
+        ddscs = hsdos.ddscs_dE_dOmega(self.free_energies, self.onset_energy,self.E0,self.q_axis, self.gos)
+        plt.subplots(1, 2)
+        plt.subplot(121)
+        plt.pcolormesh(self.q_axis/1e10, self.free_energies, ddscs)
+        plt.ylabel('Energy loss [eV]')
+        plt.xlabel('Scattering vector [1/A]')
+        plt.xlim([0, 1])
+        plt.colorbar()
+        plt.tight_layout()
+        plt.subplot(122)
+        theta = np.arctan(self.q_axis/1e10 /self.k0)*1e3 # this is approximation
+        plt.pcolormesh(theta, self.free_energies, ddscs) 
+        plt.xlim([0, 10])
+        plt.xlabel('Scattering angle [mrad]')
+        plt.ylabel('Energy loss [eV]')
+        plt.colorbar()  
+        plt.tight_layout()
