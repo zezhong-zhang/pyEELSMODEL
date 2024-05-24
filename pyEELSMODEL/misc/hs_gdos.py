@@ -303,6 +303,71 @@ def dsigma_dE_from_GOSarray_approx(energy_axis, rel_energy_axis, E0, beta,
     return dsigma_dE
 
 
+def energy2wavelength(energy: float) -> float:
+    """
+    Calculate relativistic de Broglie wavelength from energy.
+
+    Parameters
+    ----------
+    energy: float
+        Energy [eV].
+
+    Returns
+    -------
+    float
+        Relativistic de Broglie wavelength [Å].
+    """
+
+    return (
+        pc.h()
+        * pc.c()
+        / np.sqrt(energy * (2 * pc.m0() * pc.c()**2 / pc.e() + energy))
+        / pc.e()
+        * 1.0e10
+    )
+
+def ddscs_dE_dOmega(free_energies, ek, E0, q_axis, GOSmatrix):
+    """scattering cross section as a function of energy loss and solid angle
+
+    Args:
+        free_energies: 1d numpy array
+            The energy axis on which the GOS table is calculated without the onset
+            energy [eV]
+        ek: float
+            The onset energy of the calculated edge [eV]
+        E0: float
+            The acceleration voltage of the incoming electrons [V]
+        q_axis: 1d numpy array
+            The momentum on which the GOS table are calculated. [kg m /s]?
+        GOSmatrix: 2d numpy array
+            The GOS
+
+    Returns:
+        np.array: scattering cross section as a function of energy loss and solid angle
+    """
+    R = pc.R()
+    gamma = pc.gamma(E0)
+    energy_losses = free_energies + ek
+    k0 = 2 * np.pi / energy2wavelength(E0)
+
+    scs_list = []
+    for idx, epsilon in enumerate(free_energies):
+        kn = 2 * np.pi / energy2wavelength(E0-energy_losses[idx])
+        scs = (
+            4
+            * gamma ** 2
+            / q_axis**2
+            * kn
+            / k0
+            * GOSmatrix[idx]
+            / energy_losses[idx]
+            * R
+        )
+        scs_list.append(scs)
+    scs_list = np.array(scs_list).squeeze()
+
+    return scs_list
+
 def dsigma_dE_from_GOSarray_bound(energy_axis, free_energies, ek, E0, beta,
                                   alpha, q_axis, GOSmatrix, q_steps=100):
     """
@@ -387,9 +452,10 @@ def dsigma_dE_from_GOSarray_bound(energy_axis, free_energies, ek, E0, beta,
             df_dE = getinterpolatedq(q, GOSarray, q_axis)
 
             # integral+= df_dE*lnqa0sqstep
-            integral += df_dE * lnqa0sqstep * hdos.correction_factor_kohl(
+            # integral += df_dE * lnqa0sqstep * hdos.correction_factor_kohl(
+            #     alpha, beta, theta)
+            integral += df_dE * lnqa0sqstep * hdos.convergence_correction_factor(
                 alpha, beta, theta)
-
         sig = 4 * np.pi * pc.a0() ** 2 * (R / E) * (R / T) * integral
         dsigma_dE_bound += gaussian(energy_axis, sig, E, sigma)
 
