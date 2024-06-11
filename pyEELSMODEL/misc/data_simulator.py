@@ -29,8 +29,8 @@ def simulate_data():
     Zs = [6, 7, 8, 26]  # atomic weights
 
     # scan size elemental map
-    xsize = 128
-    ysize = 128
+    xsize = 32
+    ysize = 32
     maps = np.zeros((len(elements), xsize, ysize))
 
     # masks which define different regions.
