@@ -976,30 +976,29 @@ class Fitter:
         maps = np.zeros((len(comp_elements), self.spectrum.xsize,
                          self.spectrum.ysize))
         names = np.zeros(len(comp_elements), dtype='object')
-
-        # todo ugly way of discriminating between 1 or multiple components
+        set1 = plt.get_cmap('tab10')
+        from matplotlib.colors import LinearSegmentedColormap
         if len(comp_elements) == 1:
+            fig, ax = plt.subplots()
+        elif len(comp_elements) < 3:
             fig, ax = plt.subplots(1, len(comp_elements), figsize=(8, 3))
-            for i in range(len(comp_elements)):
-                index = self.get_param_index(comp_elements[i].parameters[0])
-                ax.imshow(self.coeff_matrix[:, :, index], cmap='inferno')
-                ax.set_title(comp_elements[i].name)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                maps[i] = self.coeff_matrix[:, :, index]
-                names[i] = comp_elements[i].name
-
         else:
-            fig, ax = plt.subplots(1, len(comp_elements), figsize=(8, 3))
-            for i in range(len(comp_elements)):
-                index = self.get_param_index(comp_elements[i].parameters[0])
-                ax[i].imshow(self.coeff_matrix[:, :, index], cmap='inferno')
-                ax[i].set_title(comp_elements[i].name)
-                ax[i].set_xticks([])
-                ax[i].set_yticks([])
-                maps[i] = self.coeff_matrix[:, :, index]
-                names[i] = comp_elements[i].name
-
+            col = 3 
+            row = int(np.ceil(len(comp_elements) / col))
+            fig, ax = plt.subplots(row, col, figsize=(8, 3*col))
+        for i in range(len(comp_elements)):
+            index = self.get_param_index(comp_elements[i].parameters[0])
+            base_color = set1(i % set1.N)
+            colors = [(1, 1, 1), base_color]
+            cmap = LinearSegmentedColormap.from_list("custom_colormap", colors, N=256)
+            row, col = divmod(i, 3)
+            im = ax[row,col].imshow(self.coeff_matrix[:, :, index], cmap=cmap)
+            ax[row,col].set_title(comp_elements[i].name)
+            ax[row,col].set_xticks([])
+            ax[row,col].set_yticks([])
+            maps[i] = self.coeff_matrix[:, :, index]
+            names[i] = comp_elements[i].name
+            cbar = plt.colorbar(im, ax=ax[row,col])
         return fig, maps, names
 
     def get_map_results(self, comp_elements):
