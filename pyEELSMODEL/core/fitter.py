@@ -12,6 +12,7 @@ from pyEELSMODEL.core.spectrum import Spectrum
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from scipy import stats
+from matplotlib.colors import LinearSegmentedColormap
 
 logger = logging.getLogger(__name__)
 
@@ -956,8 +957,8 @@ class Fitter:
         Parameters
         ----------
         comp_elements : list
-              List containing the components used in the model which have been
-              fitted.
+            List containing the components used in the model which have been
+            fitted.
 
         Returns
         ----------
@@ -973,32 +974,41 @@ class Fitter:
             created for publications or reports.
 
         """
-        maps = np.zeros((len(comp_elements), self.spectrum.xsize,
-                         self.spectrum.ysize))
-        names = np.zeros(len(comp_elements), dtype='object')
+        num_elements = len(comp_elements)
+        maps = np.zeros((num_elements, self.spectrum.xsize, self.spectrum.ysize))
+        names = np.zeros(num_elements, dtype='object')
         set1 = plt.get_cmap('tab10')
-        from matplotlib.colors import LinearSegmentedColormap
-        if len(comp_elements) == 1:
+
+        if num_elements == 1:
             fig, ax = plt.subplots()
-        elif len(comp_elements) < 3:
-            fig, ax = plt.subplots(1, len(comp_elements), figsize=(8, 3))
+            axes = [ax]
         else:
-            col = 3 
-            row = int(np.ceil(len(comp_elements) / col))
-            fig, ax = plt.subplots(row, col, figsize=(8, 3*col))
-        for i in range(len(comp_elements)):
-            index = self.get_param_index(comp_elements[i].parameters[0])
+            # Determine optimal number of rows and columns
+            cols = int(np.ceil(np.sqrt(num_elements)))
+            rows = int(np.ceil(num_elements / cols))
+            fig, ax = plt.subplots(rows, cols, figsize=(4 * cols, 3 * rows))
+            axes = ax.flat if num_elements > 1 else [ax]
+
+        for i, comp in enumerate(comp_elements):
+            index = self.get_param_index(comp.parameters[0])
             base_color = set1(i % set1.N)
             colors = [(1, 1, 1), base_color]
             cmap = LinearSegmentedColormap.from_list("custom_colormap", colors, N=256)
-            row, col = divmod(i, 3)
-            im = ax[row,col].imshow(self.coeff_matrix[:, :, index], cmap=cmap)
-            ax[row,col].set_title(comp_elements[i].name)
-            ax[row,col].set_xticks([])
-            ax[row,col].set_yticks([])
+            
+            ax = axes[i]
+            im = ax.imshow(self.coeff_matrix[:, :, index], cmap=cmap)
+            ax.set_title(comp.name)
+            ax.set_xticks([])
+            ax.set_yticks([])
             maps[i] = self.coeff_matrix[:, :, index]
-            names[i] = comp_elements[i].name
-            cbar = plt.colorbar(im, ax=ax[row,col])
+            names[i] = comp.name
+            cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            
+        # Hide unused subplots
+        for j in range(i + 1, rows * cols):
+            fig.delaxes(axes[j])
+
+        plt.tight_layout()
         return fig, maps, names
 
     def get_map_results(self, comp_elements):
