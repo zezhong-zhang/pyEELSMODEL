@@ -977,7 +977,7 @@ class Fitter:
         num_elements = len(comp_elements)
         maps = np.zeros((num_elements, self.spectrum.xsize, self.spectrum.ysize))
         names = np.zeros(num_elements, dtype='object')
-        set1 = plt.get_cmap('tab10')
+        cmap_colors = plt.get_cmap('tab10')
 
         if num_elements == 1:
             fig, ax = plt.subplots()
@@ -991,7 +991,7 @@ class Fitter:
 
         for i, comp in enumerate(comp_elements):
             index = self.get_param_index(comp.parameters[0])
-            base_color = set1(i % set1.N)
+            base_color = cmap_colors(i % cmap_colors.N)
             colors = [(1, 1, 1), base_color]
             cmap = LinearSegmentedColormap.from_list("custom_colormap", colors, N=256)
             

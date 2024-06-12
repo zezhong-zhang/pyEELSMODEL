@@ -328,7 +328,7 @@ class Model(Spectrum):
         components = worker + main
         self.components = components
 
-    def calculate(self, use_ll=True):
+    def calculate(self, use_ll=False):
         """
         Calculate the model by calculating all components.
         For the linear least squares fitting it would be interesting to not use
@@ -456,8 +456,8 @@ class Model(Spectrum):
             plt.title('Model')
         # show components if visible
         for comp in self.components:
-            tempplt.plot(self.energy_axis, comp.data, **kwargs)
-        tempplt.plot(self.energy_axis, self.data,
+            tempplt.plot(self.energy_axis, comp.data,label=comp.name, **kwargs)
+        tempplt.plot(self.energy_axis, self.data, label='Total', 
                      **kwargs)  # and the total spectrum
         tempplt.xlabel(r'Energy Loss [eV]')
         if spectrum is not None:

@@ -29,8 +29,8 @@ def simulate_data():
     Zs = [6, 7, 8, 26]  # atomic weights
 
     # scan size elemental map
-    xsize = 128
-    ysize = 128
+    xsize = 32
+    ysize = 32
     maps = np.zeros((len(elements), xsize, ysize))
 
     # masks which define different regions.
@@ -48,7 +48,7 @@ def simulate_data():
     adf = np.zeros((xsize, ysize))
     tlambda_map = np.zeros_like(adf)
     for ii in range(maps.shape[0]):
-        adf += (Zs[ii] * maps[ii]) ** 2
+        adf += (Zs[ii] ** 2 * maps[ii]) 
         tlambda_map += Zs[ii] * maps[ii]
 
     # maximum t/lambda is 1 for this sample
@@ -72,5 +72,21 @@ def simulate_data():
 
     hl = sim.multispectrum
     ll = sim.ll
-    ll.multidata = ll.multidata * 1e4
-    return hl, ll
+    # ll.multidata = ll.multidata 
+    return hl, ll, maps
+
+def plot_ground_truth(maps, labels =[ 'C', 'N', 'O', 'Fe']):
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    axs = axs.ravel()
+    cmap_colors = plt.cm.get_cmap('tab10')
+    for ii in range(maps.shape[0]):
+        base_color = cmap_colors(ii % cmap_colors.N)
+        colors = [(1, 1, 1), base_color]
+        cmap = LinearSegmentedColormap.from_list("custom_colormap", colors, N=256)
+        im = axs[ii].imshow(maps[ii], cmap=cmap)
+        axs[ii].set_title(f'{labels[ii]}')
+        axs[ii].axis('off')
+        plt.colorbar(im, ax=axs[ii], fraction=0.046, pad=0.04)
+    plt.show()

@@ -25,6 +25,7 @@ class LinearBG(Component):
 
     def __init__(self, specshape, rlist=[1, 2, 3, 4, 5]):
         super().__init__(specshape)
+        self.name = 'Linear Background'
 
         n = len(rlist)
         for i in range(n):

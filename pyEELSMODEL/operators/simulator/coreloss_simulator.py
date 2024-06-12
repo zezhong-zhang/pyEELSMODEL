@@ -85,7 +85,7 @@ class CoreLossSimulator(Operator):
         # of reality.
         # to validate the CRLB, it is usefull to know the exact shape of the
         # background so this convolution can be turned off.
-        self.noise = 1  # noise level
+        self.dose = 1  # dose level
 
         # shift settings
         self.use_shift = False
@@ -224,9 +224,9 @@ class CoreLossSimulator(Operator):
                              components=[bg]+self.element_components+[llcomp])
             self.mod.calculate()
             if self.add_poisson:
-                cldata[islice] = np.random.poisson(self.noise * self.mod.data)
+                cldata[islice] = np.random.poisson(self.dose * self.mod.data)
             else:
-                cldata[islice] = self.noise * self.mod.data
+                cldata[islice] = self.dose * self.mod.data
 
         s = MultiSpectrum.from_numpy(cldata, self.mod.energy_axis)
         self.multispectrum = s
