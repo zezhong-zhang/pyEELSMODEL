@@ -356,14 +356,14 @@ class ElementalQuantification(Operator):
         onset_energies = self._get_onset_energies()
         co = np.argsort(onset_energies)
 
-        prev_comps = [self.bg]
+        # prev_comps = [self.bg]
         for ii in range(co.size):
             comp = self.element_components[co[ii]]
-            comps = prev_comps + [comp]
-            s = self.fitter.model_to_multispectrum_with_comps(comps)
+            # comps = prev_comps + [comp]
+            s = self.fitter.model_to_multispectrum_with_comps([comp])
             s.exclude = s.energy_axis<comp.onset_energy
             multimodels.append(s)
-            prev_comps.append(comp)
+            # prev_comps.append(comp)
             if self.use_fine:
                 comp = self.fine_components[co[ii]]
                 comps = use_comps + [comp]
