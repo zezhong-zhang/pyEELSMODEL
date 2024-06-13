@@ -12,7 +12,7 @@ class MultiSpectrumVisualizer(Operator):
     """
     Class which visualizes the multspectrum.
     """
-    def __init__(self, multispectra, input_map=None, labels=None,
+    def __init__(self, multispectra, experimental_spectra=None, input_map=None, labels=None,
                  logscale=False):
         """
         Class which visualizes the multspectrum.
@@ -32,6 +32,7 @@ class MultiSpectrumVisualizer(Operator):
             (default: False)
 
         """
+        self.experimental_spectra = experimental_spectra
         self.multispectra = multispectra
         self.logscale = logscale
         self.is_line = False
@@ -41,7 +42,10 @@ class MultiSpectrumVisualizer(Operator):
             self.w = self.multispectra[0].size
 
         if input_map is None:
-            self.input_map = self.multispectra[0].multidata.sum(2)
+            if experimental_spectra is not None:
+                self.input_map = experimental_spectra.multidata.sum(2)
+            else:
+                self.input_map = self.multispectra[0].multidata.sum(2)
         else:
             self.input_map = input_map
 
@@ -108,13 +112,20 @@ class MultiSpectrumVisualizer(Operator):
         # print(self.w)
         # print(self.h)
         self.plotline = []
-
+        self.plot_exp = None
+        y = [self.sx, self.sx+self.h]
+        x = [self.sy, self.sy+self.w]
+        if self.experimental_spectra is not None:
+            plotline= plt.plot(self.experimental_spectra.energy_axis, self.experimental_spectra.multidata[x[0]:x[1], y[0]:y[1], :].mean((0, 1)), label='Experiment', color='black')
+            self.plot_exp = plotline
+        previous_data = np.zeros(self.multispectra[0].energy_axis.shape)
         for spectra, label in zip(self.multispectra, self.labels):
-            y = [self.sx, self.sx+self.h]
-            x = [self.sy, self.sy+self.w]
             mydata = spectra.multidata[x[0]:x[1], y[0]:y[1], :].mean((0, 1))
-            mydata[spectra.exclude] = 0
-            plotline = ax[1].plot(spectra.energy_axis, mydata, label=label)
+            # use the same color for the line and the fill
+            current_data = mydata + previous_data
+            current_data[spectra.exclude] = 0
+            plotline = ax[1].plot(spectra.energy_axis, current_data, label=label)
+            previous_data = current_data
             # print('initialize')
             self.plotline.append(plotline)
         ax[1].legend()
@@ -241,16 +252,23 @@ class MultiSpectrumVisualizer(Operator):
         # print(self.w)
         miny = 0
         maxy = 0
-        for plotline, spectra, label in zip(self.plotline,
-                                            self.multispectra, self.labels):
-            y = [self.sx, self.sx+self.w]
-            x = [self.sy, self.sy+self.h]
+        y = [self.sx, self.sx+self.w]
+        x = [self.sy, self.sy+self.h]
+        if self.experimental_spectra is not None:
+            data = self.experimental_spectra.multidata[x[0]:x[1], y[0]:y[1], :].mean((0, 1))
+            self.plot_exp[0].set_ydata(data)
+            miny = min(data.min(), miny)
+            maxy = max(data.max(), maxy)
+
+        previous_data = np.zeros(self.multispectra[0].energy_axis.shape)
+        for (plotline, spectra, label) in zip(self.plotline, self.multispectra, self.labels):
             mydata = spectra.multidata[x[0]:x[1], y[0]:y[1], :].mean((0, 1))
-            mydata[spectra.exclude] = 0
-            plotline[0].set_ydata(mydata)
+            current_data = mydata + previous_data
+            current_data[spectra.exclude] = 0
+            plotline[0].set_ydata(current_data)
             miny = min(mydata.min(), miny)
             maxy = max(mydata.max(), maxy)
-            # print('hello')
+            previous_data = current_data
         ax[1].set_title(self.get_indextitle(self.sy, self.sx, self.w, self.h))
 
         ax[1].set_ylim([miny, maxy])
