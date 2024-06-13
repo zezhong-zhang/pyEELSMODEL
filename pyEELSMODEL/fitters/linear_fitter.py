@@ -17,7 +17,7 @@ class LinearFitter(Fitter):
     Model.
     """
 
-    def __init__(self, spectrum, model, method='ols', use_weights=False):
+    def __init__(self, spectrum, model, method='nnls', use_weights=False):
 
         """
         Initialises a LinearFitter instance. Two different methods can be
@@ -124,12 +124,13 @@ class LinearFitter(Fitter):
         A_matrix_ll = np.empty(self.A_matrix.shape)
         ll_comp.new_ll = True
         for i in range(self.A_matrix.shape[1]):
-            if self.component_list[i].getcanconvolute():
-                ndata = self.A_matrix[:, i]
-                ll_comp.data = ndata
-                ll_comp.calculate()
-                ll_comp.new_ll = False
-                A_matrix_ll[:, i] = ll_comp.data
+            if self.component_list[i].name != 'Linear Background':
+                if self.component_list[i].getcanconvolute():
+                    ndata = self.A_matrix[:, i]
+                    ll_comp.data = ndata
+                    ll_comp.calculate()
+                    ll_comp.new_ll = False
+                    A_matrix_ll[:, i] = ll_comp.data
             else:
                 A_matrix_ll[:, i] = self.A_matrix[:, i]
         ll_comp.new_ll = True
