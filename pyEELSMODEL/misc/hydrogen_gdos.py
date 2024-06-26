@@ -146,7 +146,7 @@ def gdos_l(E, qa0sq, Z):
 
     return df_dE
 
-def correction_factor_kohl(
+def correction_factor_kohl_alternative(
     alpha: float, beta: float, theta_sampling: np.array
 ):
     """geometric correction factor for convergent beam in STEM
@@ -189,7 +189,7 @@ def correction_factor_kohl(
     return factor
 
 
-def correction_factor_kohl_old(alpha, beta, theta, min_alpha=1e-6):
+def correction_factor_kohl(alpha, beta, theta, min_alpha=1e-6):
     """
     STILL NEEDS TO BE VALIDATED
     Calculates the correction factor when using a convergent
