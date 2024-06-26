@@ -89,26 +89,7 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
         self.xsectionlist = []
         max_edge = self.check_maximum_edge(specshape, element, edge)
 
-        if edge == "K":
-            xsectionK = ZezhongCoreLossEdge(
-                specshape,
-                A,
-                E0,
-                alpha,
-                beta,
-                element,
-                "K1",
-                eshift=eshift,
-                q_steps=q_steps,
-                dir_path=self.dir_path,
-            )
-            self.xsectionlist.append(xsectionK)
-            super().__init__(specshape, A, E0, alpha, beta, element, "K1",
-                             q_steps=q_steps)
-            name = element + " K edge: " + str(self.onset_energy) + " eV"
-            self.setdisplayname(name)
-
-        elif (edge == "L") | (edge == "M") | (edge == "N") | (edge == "O"):
+        if edge in ['K', 'L', 'M', 'N', 'O', 'P']:
             start_edge = edge + str(max_edge)
             xsection_op = ZezhongCoreLossEdge(
                 specshape,
@@ -138,6 +119,7 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
                         q_steps=q_steps,
                         dir_path=self.dir_path,
                     )
+                    # xsection.update_edge(next_edge)
                     xsection.parameters[0].couple(xsection_op.parameters[0])
                     xsection.parameters[1].couple(xsection_op.parameters[1])
                     xsection.parameters[2].couple(xsection_op.parameters[2])

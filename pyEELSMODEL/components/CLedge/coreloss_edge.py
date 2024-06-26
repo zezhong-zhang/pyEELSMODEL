@@ -81,11 +81,18 @@ class CoreLossEdge(Component):
         self.eshift_ = eshift
         self.set_element(element)
         self.set_Z()
+        if edge == 'K':
+            edge = 'K1'
         self.set_edge(edge)
         self.set_onset_energy()
         self.q_steps = q_steps
         name = element + ' ' + edge + ' edge' + str(self.onset_energy) + ' eV'
         self.setdisplayname(name)
+
+
+    def update_edge(self, edge):
+        self.edge = edge
+        self.name = self.element + ' ' + edge + ' edge' + str(self.onset_energy) + ' eV'
 
     def get_elements_dir(self):
         return os.path.join(self.elements_dir, self.elements_name)
