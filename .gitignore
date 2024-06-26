@@ -29,3 +29,5 @@ pyEELSMODEL/database/Zhang/*.gosh
 # Sphinx documentation
 doc/_build/
 
+examples/background.ipynb
+examples/program.prof
