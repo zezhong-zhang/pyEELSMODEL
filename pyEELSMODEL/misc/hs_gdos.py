@@ -522,7 +522,11 @@ def getinterpolatedq(q, GOSarray, q_axis):
 
     if index_q == 0:
         return GOSarray[0]
-    if index_q == q_axis.size:
+    if index_q >= q_axis.size:
+        return 0.0
+    
+    # Additional check to ensure we don't exceed GOSarray bounds
+    if index_q >= len(GOSarray):
         return 0.0
 
     dq = q_axis[index_q] - q_axis[index_q - 1]

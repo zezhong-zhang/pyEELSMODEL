@@ -34,6 +34,8 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
             eshift=0,
             q_steps=100,
             dir_path=None,
+            include_white_lines=False,
+            energy_resolution=0.5,
     ):
         """
         Coreloss edges which are calculated by Zezhong Zhang.
@@ -71,6 +73,14 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
              the momentum space. The larger the number of q_steps the more
              accurate the calculation. (default: 100)
 
+        include_white_lines: bool
+             Whether to include white lines (discrete bound states) in the calculation.
+             (default: False)
+
+        energy_resolution: float [eV]
+             Energy resolution for Gaussian broadening of white lines.
+             (default: 0.5)
+
         Returns
         -------
 
@@ -101,6 +111,8 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
                 eshift=eshift,
                 q_steps=q_steps,
                 dir_path=self.dir_path,
+                include_white_lines=include_white_lines,
+                energy_resolution=energy_resolution,
             )
             self.xsectionlist.append(xsectionK)
             super().__init__(specshape, A, E0, alpha, beta, element, "K1",
@@ -121,6 +133,8 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
                 eshift=eshift,
                 q_steps=q_steps,
                 dir_path=self.dir_path,
+                include_white_lines=include_white_lines,
+                energy_resolution=energy_resolution,
             )
             self.xsectionlist.append(xsection_op)
             for i in range(max_edge - 1):
@@ -137,6 +151,8 @@ class ZezhongCoreLossEdgeCombined(CoreLossEdge):
                         eshift=eshift,
                         q_steps=q_steps,
                         dir_path=self.dir_path,
+                        include_white_lines=include_white_lines,
+                        energy_resolution=energy_resolution,
                     )
                     xsection.parameters[0].couple(xsection_op.parameters[0])
                     xsection.parameters[1].couple(xsection_op.parameters[1])

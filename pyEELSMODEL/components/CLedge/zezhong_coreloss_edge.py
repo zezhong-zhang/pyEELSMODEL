@@ -6,6 +6,7 @@ import h5py
 from pyEELSMODEL import __file__
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.integrate import quad
 
 class ZezhongCoreLossEdge(CoreLossEdge):
     """
@@ -15,7 +16,7 @@ class ZezhongCoreLossEdge(CoreLossEdge):
     """
 
     def __init__(self, specshape, A, E0, alpha, beta, element, edge, eshift=0,
-                 q_steps=100, dir_path=None):
+                 q_steps=100, dir_path=None, include_white_lines=False, energy_resolution=0.5):
         """
 
         Parameters
@@ -50,6 +51,14 @@ class ZezhongCoreLossEdge(CoreLossEdge):
              over the momentum space. The larger the number of q_steps the more
              accurate the calculation. (default: 100)
 
+        include_white_lines: bool
+             Whether to include white lines (discrete bound states) in the calculation.
+             (default: False)
+
+        energy_resolution: float [eV]
+             Energy resolution for Gaussian broadening of white lines.
+             (default: 0.5)
+
         Returns
         -------
         """
@@ -65,12 +74,20 @@ class ZezhongCoreLossEdge(CoreLossEdge):
         if edge == 'K':
             edge = 'K1'
 
+        self.include_white_lines = include_white_lines
+        self.energy_resolution = energy_resolution
+        self.white_lines_file = os.path.join(self.dir_path, 'Dirac_GOS_white_lines.gosh')
+
         super().__init__(specshape, A, E0, alpha, beta, element, edge,
                          eshift=eshift, q_steps=q_steps)
         self.set_gos_energy_q()
         self.swap_axes = False
         # an approximation for the GOS which does not do the full integration
         self.use_approx = False
+        
+        # Load white lines data if requested
+        if self.include_white_lines:
+            self._load_white_lines_data()
 
     def set_gos_energy_q(self):
         with h5py.File(self.file, 'r') as f:
@@ -121,35 +138,101 @@ class ZezhongCoreLossEdge(CoreLossEdge):
                 'Edge should be: K1, L1, L2, L3, M2, M3, M4, M5, N4, N5',
                 'N6, N7')
 
+    def _load_white_lines_data(self):
+        """Load white lines data from HDF5 file"""
+        if not os.path.exists(self.white_lines_file):
+            print(f"White lines file not found: {self.white_lines_file}")
+            self.include_white_lines = False
+            return
+        
+        try:
+            with h5py.File(self.white_lines_file, 'r') as f:
+                edge_group = f[self.element][self.edge]
+                
+                if "white_lines" not in edge_group.keys():
+                    print(f"No white lines data for {self.element} {self.edge}")
+                    self.include_white_lines = False
+                    return
+                
+                wl_group = edge_group["white_lines"]
+                self.gos_wl = wl_group["data"][:].squeeze()
+                self.free_energies_wl = wl_group["free_energies"][:].squeeze()
+                self.q_wl = wl_group["q"][:].squeeze() * 1e10  # Convert 1/A to 1/m
+        except Exception as e:
+            print(f"Error loading white lines: {e}")
+            self.include_white_lines = False
+
+    def _calculate_white_lines_cross_section(self, E0, alpha, beta):
+        """Calculate cross section for discrete bound states (white lines)"""
+        R = hsdos.pc.R()
+        T = hsdos.pc.T(E0)
+        gamma = hsdos.pc.gamma(E0)
+        a0 = hsdos.pc.a0()
+        prf = self.prefactor * 1e28
+        
+        discrete_energies = []
+        discrete_cross_sections = []
+        
+        for i, epsilon in enumerate(self.free_energies_wl):
+            E_loss = self.onset_energy + epsilon
+            discrete_energies.append(E_loss)
+            
+            GOSarray = self.gos_wl[i, :]
+            qa0sq_min, qa0sq_max = hsdos.hdos.get_qmin_max(E_loss, E0, beta, alpha=alpha)
+            
+            def integrand(log_qa0sq):
+                qa0sq = np.exp(log_qa0sq)
+                q = np.sqrt(qa0sq) / a0
+                theta = 2. * np.sqrt(np.abs(R * (qa0sq - qa0sq_min) / (4. * gamma ** 2 * T)))
+                
+                if q < self.q_wl.min() or q > self.q_wl.max():
+                    df_dE = 0
+                else:
+                    df_dE = np.interp(q, self.q_wl, GOSarray)
+                
+                return df_dE * hsdos.hdos.convergence_correction_factor(alpha, beta, theta)
+            
+            integral, _ = quad(integrand, np.log(qa0sq_min), np.log(qa0sq_max), limit=100)
+            sigma = 4 * np.pi * a0**2 * (R / E_loss) * (R / T) * integral * prf
+            discrete_cross_sections.append(sigma)
+        
+        # Create spectrum with Gaussian broadening
+        discrete_spectrum = np.zeros_like(self.energy_axis)
+        for E_discrete, sigma_discrete in zip(discrete_energies, discrete_cross_sections):
+            gaussian = np.exp(-0.5 * ((self.energy_axis - E_discrete) / self.energy_resolution) ** 2)
+            gaussian /= (self.energy_resolution * np.sqrt(2 * np.pi))
+            discrete_spectrum += gaussian * sigma_discrete 
+        
+        return discrete_spectrum, np.array(discrete_energies)
+
     def calculate_cross_section(self):
         ek = self.onset_energy
-        print('hll')
         E0 = self.parameters[1].getvalue()
         alpha = self.parameters[3].getvalue()
         beta = self.parameters[2].getvalue()
-        # e_axis = self.free_energies[:,0]
         e_axis = self.free_energies
-
         q_axis = self.q_axis
         gos = self.gos
-
         pref = 1e28 * self.prefactor
 
+        # Calculate continuum cross section
         if self.use_approx:
             cross_section = pref * hsdos.dsigma_dE_from_GOSarray_approx(
                 self.energy_axis, e_axis + ek, E0, beta, gos)
         else:
-            # cs = hsdos.dsigma_dE_from_GOSarray(self.energy_axis, e_axis + ek,
-            #                                    ek+e_axis[0], E0, beta, alpha,
-            #                                    q_axis,
-            #                                    gos, q_steps=self.q_steps,
-            #                                    swap_axes=self.swap_axes)
-
             cs = hsdos.dsigma_dE_from_GOSarray_bound(self.energy_axis, e_axis,
                                                      ek, E0, beta, alpha,
                                                      q_axis, gos, q_steps=100)
-
             cross_section = pref * cs
+
+        # Add white lines if requested
+        if self.include_white_lines:
+            discrete_spectrum, discrete_energies = self._calculate_white_lines_cross_section(E0, alpha, beta)
+            # Only add continuum above the last bound state
+            mask_continuum = self.energy_axis > discrete_energies.max()
+            combined = discrete_spectrum.copy()
+            combined[mask_continuum] += cross_section[mask_continuum]
+            cross_section = combined
 
         return cross_section
     

@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Spectrumshape():
+class Spectrumshape:
     """
     Spectrumshape is a class holding the main parameters of a spectrum in order
     to compactly create several spectra with the same size by providing an
